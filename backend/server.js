@@ -10,16 +10,15 @@ const path = require('path');
 const database = process.env.DATABASE_URL
 
 const jwt = require("jsonwebtoken")
-
+require("dotenv").config();
 const pool = new Pool({
-    connectionString: "postgresql://postgres:2303@localhost:5432/e_lectiondb"
-})
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
+});
 
-app.use(cors({
-    origin: "*", // or specify your frontend explicitly below
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-}));
+pool.connect()
+    .then(() => console.log("✅ Connected to PostgreSQL Database"))
+    .catch(err => console.error("❌ Database Connection Error:", err));
 
 app.use((req, res, next) => {
     console.log(`Request received: ${req.method} ${req.url}`);
@@ -48,8 +47,6 @@ const JWT_SECRET = process.env.JWT_SECRET
 const cDir = path.join(__dirname, "candidate_photos")
 app.use("/candidate_photos", express.static(cDir))
 console.log(cDir)
-
-require("dotenv").config();
 
 pool.query("Select version();").
     then((res) => {
