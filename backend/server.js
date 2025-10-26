@@ -20,11 +20,11 @@ app.use(cors({
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
 }));
+
 app.use((req, res, next) => {
     console.log(`Request received: ${req.method} ${req.url}`);
     next();
 });
-
 
 app.use(express.json({ limit: "10mb" }));
 app.use(session({
@@ -172,6 +172,7 @@ async function getVotes(studNumber) {
 
     return result.rows
 }
+
 app.get("/getCandidates", async (req, res) => {
     console.log("GET /getCandidates hit");
     const candidates = await getCandidates();
