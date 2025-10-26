@@ -16,7 +16,7 @@ const pool = new Pool({
     ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
 });
 app.use(cors({
-    origin: true, // allow requests from any origin
+    origin: "*", // allow requests from any origin
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
 }));
