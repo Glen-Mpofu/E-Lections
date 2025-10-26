@@ -16,7 +16,7 @@ const pool = new Pool({
 });
 
 app.use(cors({
-    origin: ['http://localhost:8081', 'https://e-lections-production.up.railway.app'],
+    origin: ['http://localhost:8081'],
     credentials: true,
 }));
 pool.connect()
