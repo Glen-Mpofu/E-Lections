@@ -8,6 +8,7 @@ const session = require("express-session")
 const cors = require("cors")
 const path = require('path');
 const database = process.env.DATABASE_URL
+const pgSession = require('connect-pg-simple')(session);
 
 const jwt = require("jsonwebtoken")
 require("dotenv").config();
@@ -44,15 +45,16 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json({ limit: "10mb" }));
+
 app.use(session({
-    secret: "electionssession1",
-    remove: false,
+    store: new pgSession({
+        pool: pool,                // your PostgreSQL pool
+        tableName: 'user_sessions' // optional
+    }),
+    secret: 'electionssession1',
+    resave: false,
     saveUninitialized: false,
-    cookie: {
-        secure: true,
-        maxAge: 1000 * 60 * 60 * 24 // 1 day. the session stays alive for 1 day
-    },
-    rolling: true
+    cookie: { maxAge: 1000 * 60 * 60 * 24 },
 }));
 
 const port = process.env.PORT || 5002
