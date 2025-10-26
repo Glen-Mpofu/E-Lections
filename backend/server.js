@@ -20,19 +20,15 @@ const allowedOrigins = [
     'https://your-frontend.vercel.app' // replace with your deployed frontend
 ];
 
-app.use(cors({
-    origin: function (origin, callback) {
-        if (!origin) return callback(null, true); // for Postman or React Native dev
-        if (allowedOrigins.indexOf(origin) === -1) {
-            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-            return callback(new Error(msg), false);
-        }
-        return callback(null, true);
-    },
-    credentials: true, // important if using cookies/sessions
+const corsOptions = {
+    origin: allowedOrigins,
+    credentials: true,
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
-}));
+};
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // handle preflight
+
 pool.connect()
     .then(() => console.log("✅ Connected to PostgreSQL Database"))
     .catch(err => console.error("❌ Database Connection Error:", err));
