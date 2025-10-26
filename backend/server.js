@@ -14,11 +14,21 @@ require("dotenv").config();
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
 });
-
 app.use(cors({
-    origin: ['http://localhost:8081'],
+    origin: 'http://localhost:8081',
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+app.use((req, res, next) => {
+    if (req.method === 'OPTIONS') {
+        res.header('Access-Control-Allow-Origin', corsOptions.origin);
+        res.header('Access-Control-Allow-Methods', corsOptions.methods.join(','));
+        res.header('Access-Control-Allow-Headers', corsOptions.allowedHeaders.join(','));
+        return res.sendStatus(200);
+    }
+    next();
+});
 pool.connect()
     .then(() => console.log("✅ Connected to PostgreSQL Database"))
     .catch(err => console.error("❌ Database Connection Error:", err));
