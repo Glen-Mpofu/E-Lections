@@ -16,19 +16,16 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
 });
+
 const allowedOrigins = [
-    "http://localhost:8081", // local dev
-    "https://your-frontend-domain.com" // production
+    "http://localhost:8081",
+    "https://your-frontend-domain.com"
 ];
 
 app.use(cors({
     origin: function (origin, callback) {
-        if (!origin) return callback(null, true); // allow Postman / RN dev
-        if (allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error("CORS not allowed"));
-        }
+        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+        return callback(new Error("CORS not allowed"));
     },
     credentials: true,
     methods: ["GET", "POST", "OPTIONS"],
