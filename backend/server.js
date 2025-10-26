@@ -8,7 +8,6 @@ const session = require("express-session")
 const cors = require("cors")
 const path = require('path');
 const database = process.env.DATABASE_URL
-const pgSession = require('connect-pg-simple')(session);
 
 const jwt = require("jsonwebtoken")
 require("dotenv").config();
@@ -16,21 +15,11 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
 });
-
-const allowedOrigins = [
-    "*"
-];
-
 app.use(cors({
-    origin: function (origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error("CORS not allowed"));
-    },
-    credentials: true,
+    origin: "*", // allow requests from any origin
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
+    allowedHeaders: ["Content-Type", "Authorization"],
 }));
-
 pool.connect()
     .then(() => console.log("✅ Connected to PostgreSQL Database"))
     .catch(err => console.error("❌ Database Connection Error:", err));
@@ -41,18 +30,21 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json({ limit: "10mb" }));
-
 app.use(session({
-    store: new pgSession({
-        pool: pool,                // your PostgreSQL pool
-        tableName: 'user_sessions' // optional
-    }),
-    secret: 'electionssession1',
-    resave: false,
+    secret: "electionssession1",
+    remove: false,
     saveUninitialized: false,
-    cookie: { maxAge: 1000 * 60 * 60 * 24 },
+    cookie: {
+        secure: false,
+        maxAge: 1000 * 60 * 60 * 24 // 1 day. the session stays alive for 1 day
+    },
+    rolling: true
 }));
 
+const port = process.env.PORT || 5002
+app.listen(port, () => {
+    console.log(`Listening in on Port ${port}`)
+})
 
 const JWT_SECRET = process.env.JWT_SECRET
 
@@ -266,8 +258,4 @@ app.post("/placeVotes", async (req, res) => {
 app.get("/", async (req, res) => {
     console.log("Server")
     res.send({ status: "ok", data: "Server is up" })
-})
-const port = process.env.PORT || 5002
-app.listen(port, () => {
-    console.log(`Listening in on Port ${port}`)
 })
