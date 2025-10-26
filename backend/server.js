@@ -209,6 +209,7 @@ app.post("/getStudent", async (req, res) => {
 })
 
 app.post("/placeVotes", async (req, res) => {
+    console.log("Here in place votes")
     const auth = req.headers.authorization
     const token = auth.substring(7)
     const studentVotes = req.body.studentVote
