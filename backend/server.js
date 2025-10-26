@@ -15,10 +15,23 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
 });
+const allowedOrigins = [
+    'http://localhost:8081', // local dev
+    'https://your-frontend.vercel.app' // replace with your deployed frontend
+];
+
 app.use(cors({
-    origin: "*", // allow requests from any origin
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true); // for Postman or React Native dev
+        if (allowedOrigins.indexOf(origin) === -1) {
+            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    },
+    credentials: true, // important if using cookies/sessions
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization"]
 }));
 pool.connect()
     .then(() => console.log("✅ Connected to PostgreSQL Database"))
