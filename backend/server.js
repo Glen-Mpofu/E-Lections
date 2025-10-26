@@ -15,11 +15,25 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
 });
+const allowedOrigins = [
+    "http://localhost:8081", // local dev
+    "https://your-frontend-domain.com" // production
+];
+
 app.use(cors({
-    origin: "*", // allow requests from any origin
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true); // allow Postman / RN dev
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error("CORS not allowed"));
+        }
+    },
+    credentials: true,
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
 pool.connect()
     .then(() => console.log("✅ Connected to PostgreSQL Database"))
     .catch(err => console.error("❌ Database Connection Error:", err));
@@ -35,7 +49,7 @@ app.use(session({
     remove: false,
     saveUninitialized: false,
     cookie: {
-        secure: false,
+        secure: true,
         maxAge: 1000 * 60 * 60 * 24 // 1 day. the session stays alive for 1 day
     },
     rolling: true
