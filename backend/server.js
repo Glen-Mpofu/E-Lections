@@ -1,180 +1,273 @@
-const express = require("express");
-const { Pool } = require("pg");
-const session = require("express-session");
-const pgSession = require("connect-pg-simple")(session);
-const cors = require("cors");
-const path = require("path");
-const jwt = require("jsonwebtoken");
+const express = require("express")
+const { Pool } = require("pg")
+const students = require("./students/students")
+const candidates = require("./candidates/candidates")
+const app = express()
+const bcrypt = require("bcrypt")
+const session = require("express-session")
+const cors = require("cors")
+const path = require('path');
+const database = process.env.DATABASE_URL
+const pgSession = require('connect-pg-simple')(session);
+
+const jwt = require("jsonwebtoken")
 require("dotenv").config();
-
-const students = require("./students/students");
-const candidates = require("./candidates/candidates");
-
-const app = express();
-
-// PostgreSQL Pool
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false
+    ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
 });
 
-// CORS
-const allowedOrigins = ["http://localhost:8081", "https://your-frontend-domain.com"];
+const allowedOrigins = [
+    "*"
+];
 
 app.use(cors({
     origin: function (origin, callback) {
         if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-        callback(new Error("CORS not allowed"));
+        return callback(new Error("CORS not allowed"));
     },
     credentials: true,
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// Logging
+pool.connect()
+    .then(() => console.log("✅ Connected to PostgreSQL Database"))
+    .catch(err => console.error("❌ Database Connection Error:", err));
+
 app.use((req, res, next) => {
     console.log(`Request received: ${req.method} ${req.url}`);
     next();
 });
 
-// JSON parser
 app.use(express.json({ limit: "10mb" }));
 
-// Session middleware
 app.use(session({
     store: new pgSession({
-        pool: pool,
-        tableName: "user_sessions"
+        pool: pool,                // your PostgreSQL pool
+        tableName: 'user_sessions' // optional
     }),
-    secret: process.env.SESSION_SECRET || "electionssession1",
+    secret: 'electionssession1',
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 1000 * 60 * 60 * 24, secure: false } // set secure:true in production with HTTPS
+    cookie: { maxAge: 1000 * 60 * 60 * 24 },
 }));
 
-// Static folder for candidate photos
-const cDir = path.join(__dirname, "candidate_photos");
-app.use("/candidate_photos", express.static(cDir));
 
-// Connect to DB
-pool.connect()
-    .then(() => console.log("✅ Connected to PostgreSQL Database"))
-    .catch(err => console.error("❌ Database Connection Error:", err));
+const JWT_SECRET = process.env.JWT_SECRET
 
-// Initialize tables
-async function initTables() {
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS STUDENT (
+const cDir = path.join(__dirname, "candidate_photos")
+app.use("/candidate_photos", express.static(cDir))
+console.log(cDir)
+
+pool.query("Select version();").
+    then((res) => {
+        console.log("Database Connected")
+        console.log("Version " + res.rows[0].version)
+    }).catch((e) => console.log("Database Connection Error: " + e))
+
+// STUDENT TABLE
+pool.query(`
+        CREATE TABLE IF NOT EXISTS STUDENT 
+        (
             StudentNumber VARCHAR(9) PRIMARY KEY,
             PIN VARCHAR(3),
             hasVoted BOOLEAN DEFAULT FALSE
         );
-    `);
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS CANDIDATE (
-            StudentNumber VARCHAR(9) PRIMARY KEY,
-            PIN VARCHAR(3) NOT NULL,
-            Photo VARCHAR(255) NOT NULL,
-            Names VARCHAR(100) NOT NULL
-        );
-    `);
-    await pool.query(`
-        CREATE TABLE IF NOT EXISTS VOTE (
-            StudentNumber VARCHAR(9) REFERENCES STUDENT(StudentNumber) NOT NULL,
-            VOTE INT NOT NULL,
-            CANDIDATENUMBER VARCHAR(9) REFERENCES CANDIDATE(StudentNumber) NOT NULL
-        );
-    `);
-}
-initTables().then(() => {
-    console.log("Tables are ready.");
-    registerStudents();
-    registerCandidates();
+    `).then((res) => {
+    console.log("Student Table Ready")
+
+    registerStudents()
+    console.log("Students Registered")
+}).catch(err => {
+    console.log(err)
 });
 
-// Seed data
+// CANDIDATE TABLE
+pool.query(`
+    CREATE TABLE IF NOT EXISTS Candidate 
+    (
+        StudentNumber VARCHAR(9) PRIMARY KEY,
+        PIN VARCHAR(3) NOT NULL, 
+        Photo VARCHAR(255) NOT NULL,
+        Names VARCHAR(100) NOT NULL
+    )
+`).then((res) => {
+    console.log("Candidate Table Ready")
+    registerCandidates()
+    console.log("Candidates Registered")
+}).catch(err => {
+    console.log(err)
+});
+
+//VOTE TABLE
+pool.query(
+    `
+    CREATE TABLE IF NOT EXISTS VOTE
+    (
+        StudentNumber VARCHAR(9) REFERENCES STUDENT(StudentNumber) NOT NULL,
+        VOTE int NOT NULL,
+        CANDIDATENUMBER VARCHAR(9) REFERENCES Candidate(StudentNumber) NOT NULL
+    );
+    `
+).then((res) => {
+    console.log("Vote Table Ready")
+}).catch(err => {
+    console.log(err)
+});
+
 async function registerStudents() {
-    for (let student of students) {
-        await pool.query(
-            `INSERT INTO STUDENT (STUDENTNUMBER, PIN) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+
+    for (let index = 0; index < students.length; index++) {
+        const student = students[index]
+        pool.query(
+            `
+                INSERT INTO STUDENT (STUDENTNUMBER, PIN)
+                VALUES($1, $2)
+                ON CONFLICT DO NOTHING
+            `,
             [student.studentNumber, student.pin]
-        );
+        )
     }
-}
-async function registerCandidates() {
-    for (let candidate of candidates) {
-        await pool.query(
-            `INSERT INTO CANDIDATE (STUDENTNUMBER, PIN, PHOTO, NAMES)
-             VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
-            [candidate.studentNumber, candidate.studentNumber.substring(6), candidate.photo, candidate.names]
-        );
-    }
+
+    const insertStudents = ``
 }
 
-// Helpers
-async function getStudent(studentNum) {
-    const res = await pool.query(`SELECT * FROM STUDENT WHERE StudentNumber=$1`, [studentNum]);
-    return res.rows[0];
+async function registerCandidates() {
+
+    for (let index = 0; index < candidates.length; index++) {
+        const candidate = candidates[index]
+        pool.query(`
+            INSERT INTO CANDIDATE (STUDENTNUMBER, PIN, PHOTO, NAMES)
+            values($1, $2, $3, $4)
+            ON CONFLICT DO NOTHING
+            `,
+            [candidate.studentNumber, candidate.studentNumber.substring(6), candidate.photo, candidate.names])
+    }
+
 }
 
 async function getCandidates() {
-    const res = await pool.query(`SELECT * FROM CANDIDATE`);
-    return res.rows;
+    const results = await pool.query(
+        `
+            SELECT * FROM CANDIDATE;
+        `
+    )
+    return results.rows
 }
 
-async function getVotes(studNumber) {
-    const res = await pool.query(`SELECT * FROM VOTE WHERE StudentNumber=$1`, [studNumber]);
-    return res.rows;
+async function getStudent(studentNum) {
+    const results = await pool.query(
+        `
+            SELECT * FROM Student where StudentNumber = $1 ;
+        `,
+        [studentNum]
+    )
+    return results.rows
 }
 
 function getStudentNumberFromToken(token) {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "SECRET_KEY");
-    return decoded.studentnumber;
+    const decoded = jwt.verify(token, "SECRET_KEY");
+    const studentnumber = decoded.studentnumber;
+
+    return studentnumber;
 }
 
-// Routes
-app.get("/", (req, res) => res.send({ status: "ok", data: "Server is up" }));
+async function getVotes(studNumber) {
+    const result = await pool.query(`
+        Select * from VOTE WHERE STUDENTNUMBER = $1
+        `, [studNumber]
+    )
+
+    return result.rows
+}
 
 app.get("/getCandidates", async (req, res) => {
+    console.log("GET /getCandidates hit");
     const candidates = await getCandidates();
-    res.send({ status: "ok", data: candidates });
-});
+    console.log("Candidates from DB:", candidates)
+
+    res.send({ status: "ok", data: candidates })
+})
 
 app.post("/getStudent", async (req, res) => {
-    const { studentData } = req.body;
-    const student = await getStudent(studentData.studNumber);
+    console.log(req.body)
 
-    if (!student) return res.send({ status: "notFromLajazz", data: "Only Students From La-Jazz Can Participate" });
-    if (student.PIN.trim() !== studentData.pin.trim()) return res.send({ status: "passwordWrong", data: "Wrong Pin" });
+    const student = req.body.studentData
+    const studCheck = await getStudent(student.studNumber);
+    const studentnumber = req.body.studentData.studNumber
 
-    if ((await getVotes(studentData.studNumber)).length > 0) {
-        return res.send({ status: "alreadyVoted", data: "You've already voted" });
+    if (studCheck.length === 0) {
+        return res.send({ status: "notFromLajazz", data: "Only Students From La-Jazz Can Participate in the Elections" })
     }
 
-    const token = jwt.sign({ studentnumber: studentData.studNumber }, process.env.JWT_SECRET || "SECRET_KEY", { expiresIn: "2d" });
-    req.session.user = { studentnumber: studentData.studNumber };
+    if (studCheck[0].pin.trim() != student.pin.trim()) {
+        return res.send({ status: "passwordWrong", data: "Wrong Pin" })
+    }
 
-    res.send({ status: "ok", data: "Student can now place votes", token });
-});
+    if ((await getVotes(studentnumber)).length > 0) {
+        return res.send({ status: "alreadyVoted", data: "You've already voted though we appreciate your dedication" })
+    }
+
+    const token = jwt.sign({ studentnumber: studentnumber }, "SECRET_KEY", { expiresIn: "2d" })
+    req.session.user = { studentnumber }
+    console.log("Session Created: ", req.session)
+
+    res.send({ status: "ok", data: "Student Can Now Place Their Votes", token: token })
+})
 
 app.post("/placeVotes", async (req, res) => {
-    const auth = req.headers.authorization;
-    if (!auth) return res.status(401).send({ status: "error", data: "No auth token" });
-    const token = auth.split(" ")[1];
-    const studentNumber = getStudentNumberFromToken(token);
-    const { studentVote } = req.body;
+    console.log("Here in place votes")
+    const auth = req.headers.authorization
+    const token = auth.substring(7)
+    const studentVotes = req.body.studentVote
+    console.log(studentVotes)
+    const studentNumber = getStudentNumberFromToken(token)
+    console.log(studentNumber)
 
-    for (let vote of studentVote) {
-        await pool.query(
-            `INSERT INTO VOTE(StudentNumber, Vote, CandidateNumber) VALUES($1, $2, $3)`,
-            [studentNumber, vote.votes, vote.studentNumber]
-        );
+    //inserting into the Votes table
+    for (let index = 0; index < studentVotes.length; index++) {
+        //console.log(studentVotes[index])
+        const studentVote = studentVotes[index]
+        pool.query(
+            `
+                INSERT INTO VOTE(studentnumber, vote, candidatenumber)
+                VALUES($1, $2, $3);
+            `, [studentNumber, studentVote.votes, studentVote.studentNumber]
+        ).then((result) => {
+            if (result <= 0) {
+                console.log("Couldn't insert vote")
+            } else {
+                console.log("Vote inserted")
+            }
+        }).catch(err => {
+            console.error(err)
+        })
     }
 
-    await pool.query(`UPDATE STUDENT SET hasVoted = TRUE WHERE StudentNumber = $1`, [studentNumber]);
-    res.send({ status: "ok", data: "Student vote placed" });
-});
+    //UPDATE THE STUDENT TABLE TO SHOW THEY'VE VOTED
+    pool.query(
+        `
+            UPDATE STUDENT SET HASVOTED = $1 WHERE STUDENTNUMBER = $2;
+        `, [true, studentNumber]
+    ).then((result) => {
+        if (result <= 0) {
+            console.log("hasVoted value wasn't changed")
+        } else {
+            console.log("hasVoted value was changed")
+        }
+    }).catch(err => {
+        console.error(err)
+    })
 
-// Start server
-const port = process.env.PORT || 5002;
-app.listen(port, () => console.log(`Listening on port ${port}`));
+    res.send({ status: "ok", data: "Student Vote Placed" })
+})
+
+app.get("/", async (req, res) => {
+    console.log("Server")
+    res.send({ status: "ok", data: "Server is up" })
+})
+const port = process.env.PORT || 5002
+app.listen(port, () => {
+    console.log(`Listening in on Port ${port}`)
+})
