@@ -20,6 +20,11 @@ app.use(cors({
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
 }));
+app.use((req, res, next) => {
+    console.log(`Request received: ${req.method} ${req.url}`);
+    next();
+});
+
 
 app.use(express.json({ limit: "10mb" }));
 app.use(session({
@@ -171,6 +176,7 @@ app.get("/getCandidates", async (req, res) => {
     console.log("GET /getCandidates hit");
     const candidates = await getCandidates();
     console.log("Candidates from DB:", candidates)
+
     res.send({ status: "ok", data: candidates })
 })
 
@@ -187,6 +193,10 @@ app.post("/getStudent", async (req, res) => {
 
     if (studCheck[0].pin.trim() != student.pin.trim()) {
         return res.send({ status: "passwordWrong", data: "Wrong Pin" })
+    }
+
+    if ((await getVotes(studentnumber)).length > 0) {
+        return res.send({ status: "alreadyVoted", data: "You've already voted though we appreciate your dedication" })
     }
 
     const token = jwt.sign({ studentnumber: studentnumber }, "SECRET_KEY", { expiresIn: "2d" })
@@ -245,5 +255,4 @@ app.post("/placeVotes", async (req, res) => {
 app.get("/", async (req, res) => {
     console.log("Server")
     res.send({ status: "ok", data: "Server is up" })
-
 })
