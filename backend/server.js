@@ -15,19 +15,6 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
 });
-const allowedOrigins = [
-    'http://localhost:8081', // local dev
-    'https://your-frontend.vercel.app' // replace with your deployed frontend
-];
-
-const corsOptions = {
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
-};
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // handle preflight
 
 pool.connect()
     .then(() => console.log("✅ Connected to PostgreSQL Database"))
