@@ -8,18 +8,15 @@ const session = require("express-session")
 const cors = require("cors")
 const path = require('path');
 const database = process.env.DATABASE_URL
-
+const pgSession = require("connect-pg-simple")
 const jwt = require("jsonwebtoken")
 require("dotenv").config();
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
 });
-app.use(cors({
-    origin: "*", // allow requests from any origin
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-}));
+
+app.use(cors({ origin: true, credentials: true }))
+
 pool.connect()
     .then(() => console.log("✅ Connected to PostgreSQL Database"))
     .catch(err => console.error("❌ Database Connection Error:", err));
@@ -32,13 +29,13 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: "10mb" }));
 app.use(session({
     secret: "electionssession1",
-    remove: false,
+    resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false,
-        maxAge: 1000 * 60 * 60 * 24 // 1 day. the session stays alive for 1 day
-    },
-    rolling: true
+        secure: false,// true in prod (HTTPS)
+        sameSite: "none", // allow cross-site cookies
+        maxAge: 24 * 60 * 60 * 1000
+    }
 }));
 
 const port = process.env.PORT || 5002
@@ -221,7 +218,7 @@ app.post("/placeVotes", async (req, res) => {
     for (let index = 0; index < studentVotes.length; index++) {
         //console.log(studentVotes[index])
         const studentVote = studentVotes[index]
-        pool.query(
+        await pool.query(
             `
                 INSERT INTO VOTE(studentnumber, vote, candidatenumber)
                 VALUES($1, $2, $3);
@@ -235,10 +232,11 @@ app.post("/placeVotes", async (req, res) => {
         }).catch(err => {
             console.error(err)
         })
+
     }
 
     //UPDATE THE STUDENT TABLE TO SHOW THEY'VE VOTED
-    pool.query(
+    await pool.query(
         `
             UPDATE STUDENT SET HASVOTED = $1 WHERE STUDENTNUMBER = $2;
         `, [true, studentNumber]
