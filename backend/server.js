@@ -15,8 +15,10 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
 });
 
-app.use(cors({ origin: true, credentials: true }))
-
+app.use(cors({
+    origin: ['http://localhost:8081', 'https://e-lections-production.up.railway.app'],
+    credentials: true,
+}));
 pool.connect()
     .then(() => console.log("✅ Connected to PostgreSQL Database"))
     .catch(err => console.error("❌ Database Connection Error:", err));
