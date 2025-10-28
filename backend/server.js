@@ -15,7 +15,7 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
 });
 app.use(cors({
-    origin: 'http://localhost:8081',
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -207,7 +207,7 @@ app.post("/getStudent", async (req, res) => {
     }
 
     if ((await getVotes(studentnumber)).length > 0) {
-        return res.send({ status: "alreadyVoted", data: "You've already voted though we appreciate your dedication" })
+        return res.send({ status: "alreadyVoted", data: "You've already voted" })
     }
 
     const token = jwt.sign({ studentnumber: studentnumber }, "SECRET_KEY", { expiresIn: "2d" })
