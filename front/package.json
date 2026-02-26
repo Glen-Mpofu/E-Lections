@@ -1,0 +1,36 @@
+{
+  "name": "e_lection",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scheme": "e_lection",
+  "homepage": "https://Glen-Mpofu.github.io/e-lections",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "predeploy": "echo 'Using exported web build'",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.3",
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "axios": "^1.12.2",
+    "expo": "~54.0.13",
+    "expo-linear-gradient": "~15.0.7",
+    "expo-router": "^6.0.13",
+    "expo-status-bar": "~3.0.8",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.4",
+    "react-native-paper": "^5.14.5",
+    "react-native-web": "^0.21.0",
+    "toastify-react-native": "^7.2.3"
+  },
+  "private": true,
+  "devDependencies": {
+    "babel-preset-expo": "^54.0.6",
+    "gh-pages": "^6.3.0",
+    "react-native-dotenv": "^3.4.11"
+  }
+}
