@@ -20,13 +20,13 @@ an online voting platform I developed for my Residence for the annual Res Commit
 ```sh
 git clone <this-repository-url>
 ```
-**frontend
+**frontend**
 ```sh
 cd frontend
 npm start
 ```
 
-**backend
+**backend**
 ```sh
 cd frontend
 npm start
